@@ -1,0 +1,6 @@
+SUBMARINE NOTES
+
+the prefix "0x" before a number, means it's a hexadecimal number
+0x00 = 0
+0x0a = 10
+0xff = 256
