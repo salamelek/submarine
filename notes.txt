@@ -4,3 +4,10 @@ the prefix "0x" before a number, means it's a hexadecimal number
 0x00 = 0
 0x0a = 10
 0xff = 256
+
+
+WORKFLOW
+
+1) [PC] The python program sends the user input via serial to the arduino
+2) [AR] The transmitter arduino gets the user input from serial, and it sends it via RF
+3) [AR] The receiver gets the data and does stuff
