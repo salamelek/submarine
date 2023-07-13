@@ -11,3 +11,18 @@ WORKFLOW
 1) [PC] The python program sends the user input via serial to the arduino
 2) [AR] The transmitter arduino gets the user input from serial, and it sends it via RF
 3) [AR] The receiver gets the data and does stuff
+
+
+communication:
+    There are 10 variables:
+        1x fullness
+        1x main motor
+        2x bow thrusters
+        2x servos
+        1x depth
+        1x angle
+        1x grabber
+        1x lights
+
+    Every variable has 1 byte (0-255)
+    the info string is of length 30 chars

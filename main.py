@@ -1,26 +1,97 @@
-import pyrf24
+import time
 import serial
-import keyboard
 
-usbPort = "COM3"
-baudRate = 9600
+from threading import Thread
+from pynput import keyboard
+
+# Open the serial port
+serial_port = serial.Serial('COM5', 9600)
+serial_port.flushInput()
 
 
-# Configure the serial connection to the RF24 module
-ser = serial.Serial(usbPort, baudRate)
-radio = pyrf24.RF24(ser)
+# default values
+values_list = [
+	"000",  # fullness
+	"000",  # motor
+	"000",  # bow_t_1
+	"000",  # bow_t_2
+	"000",  # pitch
+	"000",  # yaw
+	"000",  # depth
+	"000",  # angle
+	"000",  # grabber
+	"000",  # lights
+]
 
-# Set the radio parameters
-radio.begin()
-radio.setChannel(0x60)                      # 0x60 is 96 in hex
-radio.setDataRate(pyrf24.RF24_250KBPS)      # data rate
-radio.setPALevel(pyrf24.RF24_PA_LOW)        # set to RF24_PA_MAX for max range
 
-# Set the radio addresses
-addr = [0xF0, 0xF0, 0xF0, 0xF0, 0xE1]
-radio.openWritingPipe(addr)
+def onKeyPress(key):
+	try:
+		key_char = key.char
+		# TODO change values in values_list :')
 
-# Send keyboard input over the radio
-while True:
-    if keyboard.is_pressed('w'):
-        radio.write('w')
+	except AttributeError:
+		# special keys
+		pass
+
+	if key == keyboard.Key.esc:  # Replace with the desired key
+		print("Esc pressed... quitting")
+		# TODO exit all threads
+
+
+class SerialMonitor(Thread):
+	def __init__(self):
+		Thread.__init__(self)
+
+		self.active = False
+
+	def run(self):
+		self.active = True
+
+		while self.active:
+			if serial_port.inWaiting() > 0:
+				arduino_output = serial_port.readline().decode().rstrip()
+				print("Arduino:", arduino_output)
+
+	def stop(self):
+		self.active = False
+		return False
+
+
+def on_keyboard_press(key):
+	print(f'Keyboard key {key} pressed')
+
+
+class KeyListener(Thread):
+	def __init__(self):
+		Thread.__init__(self)
+
+		self.active = False
+		self.keyboard_listener = keyboard.Listener(on_press=onKeyPress)
+
+	def run(self):
+		self.active = True
+		self.keyboard_listener.start()
+
+	def stop(self):
+		self.active = False
+		return False
+
+
+def sendSerial():
+	# to modify data, modify the values_list
+
+	"""
+	Example data:
+	000255000000000000000000000255
+
+	:return:
+	"""
+	data = ','.join(str(value) for value in values_list)
+
+	if len(data) != 30:
+		raise "Data len is not 30!"
+
+	serial_port.write(data.encode('utf-8'))
+
+
+
