@@ -1,13 +1,21 @@
 import time
 import serial
+import threading
 
 from threading import Thread
 from pynput import keyboard
 
-# Open the serial port
-serial_port = serial.Serial('COM5', 9600)
-serial_port.flushInput()
 
+usb_port = 'COM5'
+desired_ups = 60
+
+
+# Open the serial port
+try:
+	serial_port = serial.Serial(usb_port, 9600)
+	serial_port.flushInput()
+except serial.serialutil.SerialException:
+	print(f"No arduino board detected on {usb_port}!")
 
 # default values
 values_list = [
@@ -27,7 +35,6 @@ values_list = [
 def onKeyPress(key):
 	try:
 		key_char = key.char
-		# TODO change values in values_list :')
 
 	except AttributeError:
 		# special keys
@@ -35,7 +42,30 @@ def onKeyPress(key):
 
 	if key == keyboard.Key.esc:  # Replace with the desired key
 		print("Esc pressed... quitting")
-		# TODO exit all threads
+
+		for thread in threading.enumerate():
+			try:
+				thread.stop()
+			except AttributeError:
+				# main thread
+				pass
+
+
+def sendSerial():
+	# to modify data, modify the values_list
+
+	"""
+	Example data:
+	000255000000000000000000000255
+
+	:return:
+	"""
+	data = ','.join(str(value) for value in values_list)
+
+	if len(data) != 30:
+		raise "Data len is not 30!"
+
+	serial_port.write(data.encode('utf-8'))
 
 
 class SerialMonitor(Thread):
@@ -57,10 +87,6 @@ class SerialMonitor(Thread):
 		return False
 
 
-def on_keyboard_press(key):
-	print(f'Keyboard key {key} pressed')
-
-
 class KeyListener(Thread):
 	def __init__(self):
 		Thread.__init__(self)
@@ -77,21 +103,32 @@ class KeyListener(Thread):
 		return False
 
 
-def sendSerial():
-	# to modify data, modify the values_list
+class Sender(Thread):
+	def __init__(self, ups=60):
+		Thread.__init__(self)
 
-	"""
-	Example data:
-	000255000000000000000000000255
+		self.active = False
+		self.ups = ups
 
-	:return:
-	"""
-	data = ','.join(str(value) for value in values_list)
+	def run(self):
+		self.active = True
 
-	if len(data) != 30:
-		raise "Data len is not 30!"
+		while self.active:
+			start = time.time()
 
-	serial_port.write(data.encode('utf-8'))
+			# TODO do stuff here
+			print("working")
+
+			time.sleep(max((1. / self.ups) - (time.time() - start), 0))
+
+	def stop(self):
+		self.active = False
 
 
+if __name__ == '__main__':
+	listener = KeyListener()
+	serialMonitor = SerialMonitor()
+	sender = Sender(1)
 
+	sender.start()
+	listener.start()
