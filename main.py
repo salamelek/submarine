@@ -133,7 +133,7 @@ def main(mode=InputMode.KEYBOARD, ups=60, smoothing=3):
 					steps = smoothing * ups
 					interval = (value - int(values_list[index])) / steps
 					value = int(values_list[index]) + int(interval)
-					# TODO its not linear (it will never reach 255)
+					# TODO its not linear (it will never reach 255 nor 0)
 
 					# convert int to char[3]
 					value = str(value).zfill(3)
