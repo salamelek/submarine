@@ -1,5 +1,5 @@
-data = "1234567"
+value = 1
 
-padded_string = data.ljust(10)
+value = str(value).zfill(3)
 
-print(padded_string)
+print(value, type(value))

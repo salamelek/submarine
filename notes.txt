@@ -17,7 +17,7 @@ communication:
     There are 10 variables:
         1x fullness
         1x main motor
-        2x bow thrusters
+        1x bow thrusters*
         2x servos
         1x depth
         1x angle
@@ -26,3 +26,16 @@ communication:
 
     Every variable has 1 byte (0-255)
     the info string is of length 30 chars
+
+    *only 1 bow thrusters because they are symmetrical anyway
+
+
+ktv_dict = {
+	"w": (1, 1),
+	"a": (2, 1),
+	"s": (1, 0),
+	"d": (2, 0)
+}
+
+The key is the key pressed
+the tuple has the index of the motor/servo and if it should increment or decrement (1 and 0 respectively)
