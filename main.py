@@ -31,11 +31,15 @@ values_list = [
 ]
 
 key_actions = {
-	"w": (1, 255),
-	"a": (2, 255),
-	"s": (1, 0),
-	"d": (2, 0)
+	"w": (1, 1),
+	"a": (2, 1),
+	"s": (1, -1),
+	"d": (2, -1)
 }
+
+
+def clamp(value, min_value, max_value):
+	return max(min(value, max_value), min_value)
 
 
 def stopAll():
@@ -97,13 +101,13 @@ class SerialMonitor(Thread):
 		return False
 
 
-def main(mode=InputMode.KEYBOARD, ups=60, smoothing=3):
+def main(mode=InputMode.KEYBOARD, ups=60, acceleration=5):
 	"""
 	The main function that does stuff
 
 	:param mode:
 	:param ups:
-	:param smoothing:
+	:param acceleration:
 		number of seconds that pass from being at 0 to 255 (linear?)
 
 	:return:
@@ -121,19 +125,14 @@ def main(mode=InputMode.KEYBOARD, ups=60, smoothing=3):
 			# keyboard and mouse
 			for key, arg in key_actions.items():
 				if keyboard.is_pressed(key):
-					index, value = arg[0], arg[1]
+					index, sign = arg[0], arg[1]
 
 					if index < 0 or index > 10:
 						raise ValueError("Invalid index")
 
-					if value != 0 and value != 255:
-						raise ValueError("Invalid value")
-
-					# apply smoothing
-					steps = smoothing * ups
-					interval = (value - int(values_list[index])) / steps
-					value = int(values_list[index]) + int(interval)
-					# TODO its not linear (it will never reach 255 nor 0)
+					# apply acceleration
+					value = clamp(int(values_list[index]) + (acceleration * sign), 0, 255)
+					# TODO for some stuff you dont want the same acceleration so i need custom acceleration for every value possibly (remake the system ;-;)
 
 					# convert int to char[3]
 					value = str(value).zfill(3)
