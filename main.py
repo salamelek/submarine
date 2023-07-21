@@ -82,7 +82,7 @@ class SerialSender(Thread):
 				stopAll()
 				raise ValueError(f"Data len is not 27! It's {len(data)}")
 
-			# serial_port.write(data.encode('utf-8'))
+			serial_port.write(data.encode('utf-8'))
 
 			time.sleep(max((1. / self.ups) - (time.time() - start), 0))
 
@@ -183,6 +183,6 @@ if __name__ == '__main__':
 	sm = SerialMonitor()
 	ss = SerialSender(60)
 
-	# sm.start()
+	sm.start()
 	ss.start()
 	main(ups=10)
