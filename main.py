@@ -30,7 +30,7 @@ values_list = [
 	"000",  # lights
 ]
 
-key_actions = {
+key_map = {
 	"w": (1, 1),
 	"a": (2, 1),
 	"s": (1, -1),
@@ -45,7 +45,7 @@ def clamp(value, min_value, max_value):
 def stopAll():
 	global active
 
-	print("\nEsc pressed... quitting")
+	print("\nstopAll() called... quitting")
 	# maybe use daemon threads to quit them quickly
 
 	active = False
@@ -58,21 +58,37 @@ def stopAll():
 			pass
 
 
-def sendSerial():
+class SerialSender(Thread):
 	"""
-	Example data:
-	000255000000000000000000255000
-
-	:return:
+	This class constantly streams data to the arduino via serial
+	The only parameter is ups, and it's the frequency of data signals
 	"""
+	def __init__(self, ups):
+		Thread.__init__(self, name="SerialSenderThread")
 
-	# to modify data, modify the values_list
-	data = ','.join(str(value) for value in values_list)
+		self.ups = ups
+		self.active = False
 
-	if len(data) != 30:
-		raise "Data len is not 30!"
+	def run(self):
+		self.active = True
 
-	serial_port.write(data.encode('utf-8'))
+		while self.active:
+			start = time.time()
+
+			# to modify data, modify values_list
+			data = ''.join(str(value) for value in values_list)
+			if len(data) != 27:
+				print(data)
+				stopAll()
+				raise ValueError(f"Data len is not 27! It's {len(data)}")
+
+			# serial_port.write(data.encode('utf-8'))
+
+			time.sleep(max((1. / self.ups) - (time.time() - start), 0))
+
+	def stop(self):
+		self.active = False
+		return False
 
 
 class InputMode(Enum):
@@ -84,7 +100,7 @@ class InputMode(Enum):
 
 class SerialMonitor(Thread):
 	def __init__(self):
-		Thread.__init__(self)
+		Thread.__init__(self, name="SerialMonitorThread")
 
 		self.active = False
 
@@ -123,7 +139,7 @@ def main(mode=InputMode.KEYBOARD, ups=60, acceleration=5):
 
 		if mode == InputMode.KEYBOARD:
 			# keyboard and mouse
-			for key, arg in key_actions.items():
+			for key, arg in key_map.items():
 				if keyboard.is_pressed(key):
 					index, sign = arg[0], arg[1]
 
@@ -164,7 +180,9 @@ def main(mode=InputMode.KEYBOARD, ups=60, acceleration=5):
 
 
 if __name__ == '__main__':
-	serialMonitor = SerialMonitor()
+	sm = SerialMonitor()
+	ss = SerialSender(60)
 
-	# serialMonitor.start()
+	# sm.start()
+	ss.start()
 	main(ups=10)

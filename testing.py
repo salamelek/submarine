@@ -1,5 +1,2 @@
-value = 1
+import keyboard
 
-value = str(value).zfill(3)
-
-print(value, type(value))
