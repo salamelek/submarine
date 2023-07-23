@@ -19,13 +19,14 @@ current_values = default_values[:]
 # index: which index does the letter affect
 # sign: if the value should be incremented or decremented
 # sleepTime: how much time of sleep
+# inverseKey: to know if the key assigned to the inverse function is pressed or not
 key_map = {
-    "space": {"pressed": False, "index": 0, "sign": 1, "sleepTime": 0},  # empty syringes
-    "shift": {"pressed": False, "index": 0, "sign": -1, "sleepTime": 0},  # fill syringes
-    "w": {"pressed": False, "index": 1, "sign": 1, "sleepTime": 1/128},  # motor forward
-    "s": {"pressed": False, "index": 1, "sign": -1, "sleepTime": 1/128},  # motor backward
-    "a": {"pressed": False, "index": 2, "sign": 1, "sleepTime": 1/128},  # bow thruster left
-    "d": {"pressed": False, "index": 2, "sign": -1, "sleepTime": 1/128}  # bow thruster right
+    "space": {"pressed": False, "index": 0, "sign": 1, "sleepTime": 0, "inverseKey": "shift"},  # empty syringes
+    "shift": {"pressed": False, "index": 0, "sign": -1, "sleepTime": 0, "inverseKey": "space"},  # fill syringes
+    "w": {"pressed": False, "index": 1, "sign": 1, "sleepTime": 1 / 128, "inverseKey": "s"},  # motor forward
+    "s": {"pressed": False, "index": 1, "sign": -1, "sleepTime": 1 / 128, "inverseKey": "w"},  # motor backward
+    "a": {"pressed": False, "index": 2, "sign": 1, "sleepTime": 1 / 128, "inverseKey": "d"},  # bow thruster left
+    "d": {"pressed": False, "index": 2, "sign": -1, "sleepTime": 1 / 128, "inverseKey": "a"}  # bow thruster right
 }
 
 
@@ -44,7 +45,7 @@ class MyPrinter(Thread):
 
         while self.active:
             print(current_values)
-            time.sleep(1 / 5)
+            time.sleep(1 / 60)
 
     def stop(self):
         self.active = False
@@ -68,19 +69,66 @@ class AccThread(Thread):
         while self.active and key_map[self.key]["pressed"]:
             start = time.time()
 
-            # current_values[self.index] += self.sign
-
             value = clamp(int(current_values[self.index]) + self.sign, 0, 255)
-            value = str(value).zfill(3)
-            current_values[self.index] = value
+
+            # filter out instant accelerations
+            if self.sleepTime == 0:
+                value = max(0, (self.sign * 255))
+
+            current_values[self.index] = str(value).zfill(3)
 
             # stop loop if it already reached its max or min
             if value == 255 or value == 0:
                 self.active = False
                 break
 
-            # time.sleep(max((1. / ups) - (time.time() - start), 0))
             time.sleep(max(self.sleepTime - (time.time() - start), 0))
+
+    def stop(self):
+        self.active = False
+        return False
+
+
+class AccToValue(Thread):
+    def __init__(self, key, index, targetValue, sleepTime):
+        Thread.__init__(self)
+
+        self.active = False
+
+        self.index = index
+        self.targetValue = targetValue
+        self.sleepTime = sleepTime
+        self.key = key
+        self.inverseKey = key_map[self.key]["inverseKey"]
+
+    def run(self):
+        self.active = True
+
+        # active just to be able to stop it when needed, not on key or inverse key pressed, so it doesn't interfere
+        while self.active and not key_map[self.key]["pressed"] and not key_map[self.inverseKey]["pressed"]:
+            start = time.time()
+
+            # filter out instant accelerations
+            if self.sleepTime == 0:
+                current_values[self.index] = str(self.targetValue).zfill(3)
+
+            if current_values[self.index] > self.targetValue:
+                value = clamp(int(current_values[self.index]) - 1, 0, 255)
+
+            elif current_values[self.index] < self.targetValue:
+                value = clamp(int(current_values[self.index]) + 1, 0, 255)
+
+            else:
+                self.active = False
+                break
+
+            current_values[self.index] = str(value).zfill(3)
+
+            time.sleep(max(self.sleepTime - (time.time() - start), 0))
+
+    def stop(self):
+        self.active = False
+        return False
 
 
 def onKeyUpdate(keyEvent):
@@ -95,7 +143,7 @@ def onKeyUpdate(keyEvent):
         for key, args in key_map.items():
             if keyEvent.name == key:
                 key_map[key]["pressed"] = False
-                current_values[args["index"]] = default_values[args["index"]]
+                AccToValue(key, args["index"], default_values[args["index"]], args["sleepTime"]).start()
 
 
 if __name__ == '__main__':
