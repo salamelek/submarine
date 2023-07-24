@@ -1,3 +1,5 @@
+// receiver
+
 #include <SPI.h>
 #include <nRF24L01.h>
 #include <RF24.h>
@@ -17,9 +19,24 @@ void setup() {
   Serial.println("Reciever running...");
 }
 
+void printArray(unsigned char *arr, int size) {
+  Serial.print("[");
+  for (int i = 0; i < size; i++) {
+    Serial.print(arr[i]);
+    if (i < size - 1) {
+      Serial.print(", ");
+    }
+  }
+  Serial.println("]");
+}
+
 void loop() {
   if(radio.available()) {
-    radio.read(&data, sizeof(data));
-    Serial.println(data);
+    unsigned char receivedData[9];                    // Create a buffer to store the received data
+    radio.read(&receivedData, sizeof(receivedData));  // Read the received data into the buffer
+
+    // Print the received array
+    Serial.print("Received data: ");
+    printArray(receivedData, sizeof(receivedData));
   }
 }

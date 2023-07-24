@@ -7,7 +7,7 @@ from threading import Thread
 from input_options import InputMode
 
 usb_port = 'COM5'
-desired_ups = 60
+desired_ups = 2
 active = True
 quitCommand = "esc"
 mode = InputMode.KEYBOARD
@@ -16,8 +16,9 @@ mode = InputMode.KEYBOARD
 try:
 	serial_port = serial.Serial(usb_port, 9600)
 	serial_port.flushInput()
+	print(f"Connected to arduino on port {usb_port}!\n")
 except serial.serialutil.SerialException:
-	print(f"No arduino board detected on {usb_port}!")
+	print(f"No arduino board detected on {usb_port}!\n")
 
 default_values = [
 	"127",  # fill (either empties(-127) or fills(128) or stays still(0))
@@ -43,7 +44,11 @@ key_map = {
 	"w": {"pressed": False, "index": 1, "sign": 1, "sleepTime": 1 / 128, "inverseKey": "s"},  # motor forward
 	"s": {"pressed": False, "index": 1, "sign": -1, "sleepTime": 1 / 128, "inverseKey": "w"},  # motor backward
 	"a": {"pressed": False, "index": 2, "sign": 1, "sleepTime": 1 / 128, "inverseKey": "d"},  # bow thruster left
-	"d": {"pressed": False, "index": 2, "sign": -1, "sleepTime": 1 / 128, "inverseKey": "a"}  # bow thruster right
+	"d": {"pressed": False, "index": 2, "sign": -1, "sleepTime": 1 / 128, "inverseKey": "a"},  # bow thruster right
+	"up": {"pressed": False, "index": 3, "sign": -1, "sleepTime": 1 / 128, "inverseKey": "down"},  # pitch down
+	"down": {"pressed": False, "index": 3, "sign": 1, "sleepTime": 1 / 128, "inverseKey": "up"},  # pitch down
+	"right": {"pressed": False, "index": 4, "sign": 1, "sleepTime": 1 / 128, "inverseKey": "left"},  # yaw right
+	"left": {"pressed": False, "index": 4, "sign": -1, "sleepTime": 1 / 128, "inverseKey": "right"}  # yaw right
 }
 
 
@@ -81,16 +86,16 @@ class SerialSender(Thread):
 
 	def run(self):
 		self.active = True
+		print(f"Thread '{self.name}' starting")
 
 		while self.active:
 			start = time.time()
 
 			# to modify data, modify values_list
-			data = ''.join(str(value) for value in current_values)
-			if len(data) != 27:
-				print(data)
+			data = (''.join(str(value) for value in current_values)) + "\n"
+			if len(data) != 28:
 				stopAll()
-				raise ValueError(f"Data len is not 27! It's {len(data)}")
+				raise ValueError(f"Data len is not 28! It's {len(data)}")
 
 			try:
 				serial_port.write(data.encode('utf-8'))
@@ -101,6 +106,7 @@ class SerialSender(Thread):
 			time.sleep(max((1. / self.ups) - (time.time() - start), 0))
 
 	def stop(self):
+		print(f"Thread '{self.name}' stopping")
 		self.active = False
 		return False
 
@@ -113,6 +119,7 @@ class SerialMonitor(Thread):
 
 	def run(self):
 		self.active = True
+		print(f"Thread '{self.name}' starting")
 
 		try:
 			serial_port.name
@@ -122,10 +129,14 @@ class SerialMonitor(Thread):
 
 		while self.active:
 			if serial_port.inWaiting() > 0:
-				arduino_output = serial_port.readline().decode().rstrip()
+				try:
+					arduino_output = serial_port.readline().decode().rstrip()
+				except UnicodeDecodeError:
+					arduino_output = "?"
 				print(f"{usb_port}: {arduino_output}")
 
 	def stop(self):
+		print(f"Thread '{self.name}' stopping")
 		self.active = False
 		return False
 
@@ -244,9 +255,16 @@ if __name__ == '__main__':
 		raise ValueError("ffs choose a fking option")
 
 	sm = SerialMonitor()
-	ss = SerialSender(60)
+	ss = SerialSender(desired_ups)
 
 	sm.start()
 	ss.start()
 
-	keyboard.wait(quitCommand)
+	try:
+		keyboard.wait(quitCommand)
+	except KeyboardInterrupt:
+		pass
+
+	stopAll()
+
+	print("\ngoodbye")
