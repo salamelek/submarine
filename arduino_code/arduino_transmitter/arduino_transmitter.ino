@@ -11,10 +11,11 @@ const byte address[6] = "00001";
 unsigned char digitsArray[9];
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
 
   // initialise radio
   radio.begin();
+  radio.setPayloadSize(9);
   radio.openWritingPipe(address);
   radio.setPALevel(RF24_PA_LOW);
   radio.stopListening();
@@ -44,7 +45,5 @@ void loop() {
     }
 
     radio.write(&digitsArray, sizeof(digitsArray));
-
-    printArray(digitsArray, sizeof(digitsArray));
   }
 }

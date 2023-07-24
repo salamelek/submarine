@@ -9,14 +9,15 @@ const byte address[6] = "00001";
 char data[32];
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(230400);
 
   radio.begin();
+  radio.serPayloadSize(9);
   radio.openReadingPipe(1,address);
   radio.setPALevel(RF24_PA_LOW);
   radio.startListening();
 
-  Serial.println("Reciever running...");
+  Serial.println("Receiver running...");
 }
 
 void printArray(unsigned char *arr, int size) {

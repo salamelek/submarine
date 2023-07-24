@@ -7,14 +7,16 @@ from threading import Thread
 from input_options import InputMode
 
 usb_port = 'COM5'
-desired_ups = 2
+baud_rate = 115200
+desired_ups = 60
 active = True
 quitCommand = "esc"
 mode = InputMode.KEYBOARD
+global_acc_factor = 2
 
 # Open the serial port
 try:
-	serial_port = serial.Serial(usb_port, 9600)
+	serial_port = serial.Serial(usb_port, baud_rate)
 	serial_port.flushInput()
 	print(f"Connected to arduino on port {usb_port}!\n")
 except serial.serialutil.SerialException:
@@ -35,20 +37,20 @@ default_values = [
 current_values = default_values[:]
 
 # index: which index does the letter affect
-# sign: if the value should be incremented or decremented
+# step: if the value should be incremented or decremented (and by how much)
 # sleepTime: how much time of sleep
 # inverseKey: to know if the key assigned to the inverse function is pressed or not
 key_map = {
-	"space": {"pressed": False, "index": 0, "sign": 1, "sleepTime": 0, "inverseKey": "shift"},  # empty syringes
-	"shift": {"pressed": False, "index": 0, "sign": -1, "sleepTime": 0, "inverseKey": "space"},  # fill syringes
-	"w": {"pressed": False, "index": 1, "sign": 1, "sleepTime": 1 / 128, "inverseKey": "s"},  # motor forward
-	"s": {"pressed": False, "index": 1, "sign": -1, "sleepTime": 1 / 128, "inverseKey": "w"},  # motor backward
-	"a": {"pressed": False, "index": 2, "sign": 1, "sleepTime": 1 / 128, "inverseKey": "d"},  # bow thruster left
-	"d": {"pressed": False, "index": 2, "sign": -1, "sleepTime": 1 / 128, "inverseKey": "a"},  # bow thruster right
-	"up": {"pressed": False, "index": 3, "sign": -1, "sleepTime": 1 / 128, "inverseKey": "down"},  # pitch down
-	"down": {"pressed": False, "index": 3, "sign": 1, "sleepTime": 1 / 128, "inverseKey": "up"},  # pitch down
-	"right": {"pressed": False, "index": 4, "sign": 1, "sleepTime": 1 / 128, "inverseKey": "left"},  # yaw right
-	"left": {"pressed": False, "index": 4, "sign": -1, "sleepTime": 1 / 128, "inverseKey": "right"}  # yaw right
+	"space": {"pressed": False, "hold": False, "index": 0, "step": 1, "sleepTime": 0, "inverseKey": "shift"},  # empty syringes
+	"shift": {"pressed": False, "hold": False, "index": 0, "step": -1, "sleepTime": 0, "inverseKey": "space"},  # fill syringes
+	"w": {"pressed": False, "hold": False, "index": 1, "step": 1, "sleepTime": 1 / 128, "inverseKey": "s"},  # motor forward
+	"s": {"pressed": False, "hold": False, "index": 1, "step": -1, "sleepTime": 1 / 128, "inverseKey": "w"},  # motor backward
+	"a": {"pressed": False, "hold": False, "index": 2, "step": 1, "sleepTime": 1 / 128, "inverseKey": "d"},  # bow thruster left
+	"d": {"pressed": False, "hold": False, "index": 2, "step": -1, "sleepTime": 1 / 128, "inverseKey": "a"},  # bow thruster right
+	"up": {"pressed": False, "hold": False, "index": 3, "step": -1, "sleepTime": 1 / 128, "inverseKey": "down"},  # pitch down
+	"down": {"pressed": False, "hold": False, "index": 3, "step": 1, "sleepTime": 1 / 128, "inverseKey": "up"},  # pitch down
+	"right": {"pressed": False, "hold": False, "index": 4, "step": 1, "sleepTime": 1 / 128, "inverseKey": "left"},  # yaw right
+	"left": {"pressed": False, "hold": False, "index": 4, "step": -1, "sleepTime": 1 / 128, "inverseKey": "right"}  # yaw right
 }
 
 
@@ -75,7 +77,7 @@ def stopAll():
 class SerialSender(Thread):
 	"""
 	This class constantly streams data to the arduino via serial
-	The only parameter is ups, and it's the frequency of data signals
+	The only parameter is ups, and it is the frequency of data sends
 	"""
 
 	def __init__(self, ups=60):
@@ -142,13 +144,13 @@ class SerialMonitor(Thread):
 
 
 class AccThread(Thread):
-	def __init__(self, key, index, sign, sleepTime):
-		Thread.__init__(self, name=f"Acc{index}{sign}Thread", daemon=True)
+	def __init__(self, key, index, step, sleepTime):
+		Thread.__init__(self, name=f"Acc{index}{step}Thread", daemon=True)
 
 		self.active = False
 
 		self.key = key
-		self.sign = sign
+		self.step = step
 		self.index = index
 		self.sleepTime = sleepTime
 
@@ -158,11 +160,11 @@ class AccThread(Thread):
 		while self.active and key_map[self.key]["pressed"]:
 			start = time.time()
 
-			value = clamp(int(current_values[self.index]) + self.sign, 0, 255)
+			value = clamp(int(current_values[self.index]) + self.step * global_acc_factor, 0, 255)
 
 			# filter out instant accelerations
 			if self.sleepTime == 0:
-				value = max(0, (self.sign * 255))
+				value = max(0, (self.step * 255))
 
 			current_values[self.index] = str(value).zfill(3)
 
@@ -179,16 +181,18 @@ class AccThread(Thread):
 
 
 class AccToValue(Thread):
-	def __init__(self, key, index, targetValue, sleepTime):
+	def __init__(self, key, index, targetValue, sleepTime, step):
 		Thread.__init__(self)
 
 		self.active = False
 
 		self.index = index
+		self.step = step
 		self.targetValue = targetValue
 		self.sleepTime = sleepTime
 		self.key = key
 		self.inverseKey = key_map[self.key]["inverseKey"]
+		self.step = step
 
 	def run(self):
 		self.active = True
@@ -202,10 +206,10 @@ class AccToValue(Thread):
 				current_values[self.index] = str(self.targetValue).zfill(3)
 
 			if current_values[self.index] > self.targetValue:
-				value = clamp(int(current_values[self.index]) - 1, 0, 255)
+				value = clamp(int(current_values[self.index]) - global_acc_factor * abs(self.step), 0, 255)
 
 			elif current_values[self.index] < self.targetValue:
-				value = clamp(int(current_values[self.index]) + 1, 0, 255)
+				value = clamp(int(current_values[self.index]) + global_acc_factor * abs(self.step), 0, 255)
 
 			else:
 				self.active = False
@@ -226,13 +230,14 @@ def onKeyUpdate(keyEvent):
 			if keyEvent.name == key:
 				if not key_map[key]["pressed"]:
 					key_map[key]["pressed"] = True
-					AccThread(key, args["index"], args["sign"], args["sleepTime"]).start()
+					AccThread(key, args["index"], args["step"], args["sleepTime"]).start()
 
 	if keyEvent.event_type == keyboard.KEY_UP:
 		for key, args in key_map.items():
 			if keyEvent.name == key:
 				key_map[key]["pressed"] = False
-				AccToValue(key, args["index"], default_values[args["index"]], args["sleepTime"]).start()
+				if not key_map[key]["hold"]:
+					AccToValue(key, args["index"], default_values[args["index"]], args["sleepTime"], args["step"]).start()
 
 
 if __name__ == '__main__':
