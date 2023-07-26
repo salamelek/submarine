@@ -12,7 +12,7 @@ void setup() {
   Serial.begin(230400);
 
   radio.begin();
-  radio.serPayloadSize(9);
+  radio.setPayloadSize(9);
   radio.openReadingPipe(1,address);
   radio.setPALevel(RF24_PA_LOW);
   radio.startListening();
