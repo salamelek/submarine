@@ -1,0 +1,17 @@
+list of every motor function ordered by index
+
+
+def a function for every motor
+
+
+loop:
+    if got signal:
+        reset signal timer
+        for i in range elements of the list:
+            apply the value through the function list (the index is i)
+
+    else:
+        add to signal timer
+
+    if signal timer > xtime:
+        emergency
