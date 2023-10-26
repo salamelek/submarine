@@ -6,13 +6,14 @@ import threading
 from threading import Thread
 from input_options import InputMode
 
-usb_port = 'COM5'
+# usb_port = 'COM5'
+usb_port = "/dev/ttyUSB0"
 baud_rate = 115200
 desired_ups = 60
 active = True
 quitCommand = "esc"
 mode = InputMode.KEYBOARD
-global_acc_factor = 2
+global_acc_factor = 1
 
 # Open the serial port
 try:
@@ -43,14 +44,14 @@ current_values = default_values[:]
 key_map = {
 	"space": {"pressed": False, "hold": False, "index": 0, "step": 1, "sleepTime": 0, "inverseKey": "shift"},  # empty syringes
 	"shift": {"pressed": False, "hold": False, "index": 0, "step": -1, "sleepTime": 0, "inverseKey": "space"},  # fill syringes
-	"w": {"pressed": False, "hold": False, "index": 1, "step": 1, "sleepTime": 1 / 128, "inverseKey": "s"},  # motor forward
-	"s": {"pressed": False, "hold": False, "index": 1, "step": -1, "sleepTime": 1 / 128, "inverseKey": "w"},  # motor backward
-	"a": {"pressed": False, "hold": False, "index": 2, "step": 1, "sleepTime": 1 / 128, "inverseKey": "d"},  # bow thruster left
-	"d": {"pressed": False, "hold": False, "index": 2, "step": -1, "sleepTime": 1 / 128, "inverseKey": "a"},  # bow thruster right
-	"up": {"pressed": False, "hold": False, "index": 3, "step": -1, "sleepTime": 1 / 128, "inverseKey": "down"},  # pitch down
-	"down": {"pressed": False, "hold": False, "index": 3, "step": 1, "sleepTime": 1 / 128, "inverseKey": "up"},  # pitch down
-	"right": {"pressed": False, "hold": False, "index": 4, "step": 1, "sleepTime": 1 / 128, "inverseKey": "left"},  # yaw right
-	"left": {"pressed": False, "hold": False, "index": 4, "step": -1, "sleepTime": 1 / 128, "inverseKey": "right"}  # yaw right
+	"w": {"pressed": False, "hold": False, "index": 1, "step": 1, "sleepTime": 1 / 64, "inverseKey": "s"},  # motor forward
+	"s": {"pressed": False, "hold": False, "index": 1, "step": -1, "sleepTime": 1 / 64, "inverseKey": "w"},  # motor backward
+	"a": {"pressed": False, "hold": False, "index": 2, "step": 1, "sleepTime": 1 / 64, "inverseKey": "d"},  # bow thruster left
+	"d": {"pressed": False, "hold": False, "index": 2, "step": -1, "sleepTime": 1 / 64, "inverseKey": "a"},  # bow thruster right
+	"up": {"pressed": False, "hold": False, "index": 3, "step": -1, "sleepTime": 1 / 64, "inverseKey": "down"},  # pitch down
+	"down": {"pressed": False, "hold": False, "index": 3, "step": 1, "sleepTime": 1 / 64, "inverseKey": "up"},  # pitch down
+	"right": {"pressed": False, "hold": False, "index": 4, "step": 1, "sleepTime": 1 / 64, "inverseKey": "left"},  # yaw right
+	"left": {"pressed": False, "hold": False, "index": 4, "step": -1, "sleepTime": 1 / 64, "inverseKey": "right"}  # yaw right
 }
 
 

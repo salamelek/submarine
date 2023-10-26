@@ -3,6 +3,9 @@
 #include <SPI.h>
 #include <nRF24L01.h>
 #include <RF24.h>
+#include <Servo.h>
+
+Servo esc;
 
 RF24 radio(9,10); // CE, CSN
 const byte address[6] = "00001";
@@ -16,6 +19,8 @@ void setup() {
   radio.openReadingPipe(1,address);
   radio.setPALevel(RF24_PA_LOW);
   radio.startListening();
+  
+  esc.attach(8); // Connect the ESC signal wire to pin 8 (D8)
 
   Serial.println("Receiver running...");
 }
@@ -39,5 +44,7 @@ void loop() {
     // Print the received array
     Serial.print("Received data: ");
     printArray(receivedData, sizeof(receivedData));
+
+    esc.writeMicroseconds(map(receivedData[1], 0, 255, 1000, 2000));
   }
 }
